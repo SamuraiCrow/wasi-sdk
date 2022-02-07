@@ -597,19 +597,12 @@ template <class T>
 #endif
 
 // mock hacks
-template<typename _Tp>
-struct __cxx_atomic_base_impl 
-{
-  _Tp _x;
-__cxx_atomic_base_impl<_Tp>(_Tp v):_x(v){}
-//bool operator ==(_Tp _y){return _x == _y;}
-};
 #define _LIBCPP_DEFAULT ;
 #define _LIBCPP_INLINE_VISIBILITY 
 #define _VSTD std
 #define _NOEXCEPT noexcept
 #define _LIBCPP_CONSTEXPR constexpr
-#define _LIBCPP_ATOMIC_FLAG_TYPE(arg) conditional<arg, const volatile __cxx_atomic_flag_impl, const __cxx_atomic_flag_impl>
+#define _LIBCPP_ATOMIC_FLAG_TYPE bool
 #define _LIBCPP_DEPRECATED_IN_CXX20
 #define __libcpp_timed_backoff_policy(args) false
 #define _LIBCPP_AVAILABILITY_SYNC
@@ -624,7 +617,20 @@ __cxx_atomic_base_impl<_Tp>(_Tp v):_x(v){}
 #else
 #define _LIBCPP_CONSTEXPR_AFTER_CXX17
 #endif
+#define _LIBCPP_DISABLE_EXTENSION_WARNING __extension__
+template <typename _Tp>
+struct __cxx_atomic_base_impl {
 
+  _LIBCPP_INLINE_VISIBILITY
+#ifndef _LIBCPP_CXX03_LANG
+    __cxx_atomic_base_impl() _NOEXCEPT = default;
+#else
+    __cxx_atomic_base_impl() _NOEXCEPT : __a_value() {}
+#endif // _LIBCPP_CXX03_LANG
+  _LIBCPP_CONSTEXPR explicit __cxx_atomic_base_impl(_Tp value) _NOEXCEPT
+    : __a_value(value) {}
+  _LIBCPP_DISABLE_EXTENSION_WARNING _Atomic(_Tp) __a_value;
+};
 
 #define _LIBCPP_CHECK_STORE_MEMORY_ORDER(__m) \
   _LIBCPP_DIAGNOSE_WARNING(__m == memory_order_consume || \
@@ -690,6 +696,14 @@ typedef enum memory_order {
 } memory_order;
 
 #endif // _LIBCPP_STD_VER > 17
+// [atomics.types.generic]p1 guarantees _Tp is trivially copyable. Because
+// the default operator= in an object is not volatile, a byte-by-byte copy
+// is required.
+template <typename _Tp, typename _Tv> _LIBCPP_INLINE_VISIBILITY
+typename enable_if<is_assignable<_Tp&, _Tv>::value>::type
+__cxx_atomic_assign_volatile(_Tp& __a_value, _Tv const& __val) {
+  __a_value = __val;
+}
 
 template <typename _Tp> _LIBCPP_INLINE_VISIBILITY
 bool __cxx_nonatomic_compare_equal(_Tp const& __lhs, _Tp const& __rhs) {
@@ -1038,9 +1052,7 @@ template<typename _Tp> struct __cxx_is_always_lock_free {
 
 
 template <typename _Tp,
-          typename _Base = typename conditional<__cxx_is_always_lock_free<_Tp>::__value,
-                                                __cxx_atomic_base_impl<_Tp>,
-                                                __cxx_atomic_lock_impl<_Tp> >::type>
+          typename _Base = __cxx_atomic_lock_impl<_Tp> >
 struct __cxx_atomic_impl : public _Base {
 
 #if _GNUC_VER >= 501
@@ -2027,6 +2039,7 @@ atomic_fetch_xor_explicit(atomic<_Tp>* __o, typename atomic<_Tp>::value_type __o
 struct atomic_flag
 {
     __cxx_atomic_impl<_LIBCPP_ATOMIC_FLAG_TYPE> __a_;
+    // mock hacks
 
     _LIBCPP_INLINE_VISIBILITY
     bool test(memory_order __m = memory_order_seq_cst) const volatile _NOEXCEPT
