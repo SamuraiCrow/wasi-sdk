@@ -39,33 +39,39 @@ endif
 
 CLANG_VERSION=$(shell $(BASH) ./llvm_version.sh $(LLVM_PROJ_DIR))
 VERSION:=$(shell $(BASH) ./version.sh)
-DEBUG_PREFIX_MAP=-fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)
+DEBUG_PREFIX_MAP=
+# -fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)
+WASI_SDK_PREFIX=$(BUILD_PREFIX)
+CC="$(PATH_PREFIX)/bin/clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot"
+CXX="$(PATH_PREFIX)/bin/clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot"
 
 default: build
 	@echo "Use -fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)"
 
 check:
-	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
-	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
 	PATH="$(PATH_PREFIX)/bin:$$PATH" tests/run.sh
 
 clean:
-	rm -rf build $(DESTDIR)
+	rm -rf build/llvm-wasi build/llvm-wasi.BUILT \
+		build/libcxx-wasi build/libcxx-wasi.BUILT \
+		build/libcxxabi-wasi.BUILT build/libcxxabi-wasi
 
 build/llvm-wasi.BUILT:
 	mkdir -p build/llvm-wasi
 	cd build/llvm-wasi && cmake -G Ninja \
-		-DWASI_SDK_PREFIX=$(PREFIX) \
+		-DWASI_SDK_PREFIX=$(BUILD_PREFIX) \
+	    -DCMAKE_C_COMPILER_WORKS=ON \
+    	-DCMAKE_CXX_COMPILER_WORKS=ON \
+		-DCMAKE_C_FLAGS="-matomics" \
+		-DCMAKE_CXX_FLAGS="-matomics" \
 		-DCMAKE_BUILD_TYPE=MinSizeRel \
 		-DCMAKE_INSTALL_PREFIX=$(PREFIX) \
 		-DLLVM_TARGETS_TO_BUILD=WebAssembly \
 		-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasi \
 		-DDEFAULT_SYSROOT=$(PREFIX)/share/wasi-sysroot \
 		-DLLVM_INSTALL_BINUTILS_SYMLINKS=TRUE \
-		-DCMAKE_TOOLCHAIN_FILE=$(PREFIX)/share/cmake/wasi-sdk.cmake \
+		-DCMAKE_TOOLCHAIN_FILE=$(BUILD_PREFIX)/share/cmake/wasi-sdk.cmake \
 		$(LLVM_PROJ_DIR)/llvm
-	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
-	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
 	DESTDIR=$(DESTDIR) ninja $(NINJA_FLAGS) -C build/llvm-wasi \
 		install-llvm-ranlib \
 		install-llvm-strip \
@@ -84,8 +90,6 @@ build/llvm-wasi.BUILT:
 
 # Flags for libcxx.
 LIBCXX_CMAKE_FLAGS = \
-    -DCMAKE_C_COMPILER_WORKS=ON \
-    -DCMAKE_CXX_COMPILER_WORKS=ON \
     -DCMAKE_AR=$(BUILD_PREFIX)/bin/ar \
     -DCMAKE_MODULE_PATH=$(ROOT_DIR)/cmake \
     -DCMAKE_TOOLCHAIN_FILE=$(ROOT_DIR)/wasi-sdk.cmake \
@@ -113,24 +117,21 @@ build/libcxx-wasi.BUILT: build/llvm.BUILT build/compiler-rt.BUILT build/wasi-lib
 	# Do the build.
 	mkdir -p build/libcxx-wasi
 	cd build/libcxx-wasi && cmake -G Ninja $(LIBCXX_CMAKE_FLAGS) \
-		-DWASI_SDK_PREFIX=$(PREFIX) \
+		-DWASI_SDK_PREFIX=$(BUILD_PREFIX) \
 		-DCMAKE_SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
-		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) \
-		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) \
+		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) -matomics" \
+		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) -matomics" \
 		-DLIBCXX_LIBDIR_SUFFIX=$(ESCAPE_SLASH)/wasm32-wasi \
-		-DCMAKE_TOOLCHAIN_FILE=$(PREFIX)/share/cmake/wasi-sdk.cmake \
+		-DCMAKE_TOOLCHAIN_FILE=$(BUILD_PREFIX)/share/cmake/wasi-sdk.cmake \
 		$(LLVM_PROJ_DIR)/libcxx
-	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
-	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
 	ninja $(NINJA_FLAGS) -C build/libcxx-wasi
+	cp mock-atomic/atomic $(BUILD_PREFIX)/share/wasi-sysroot/include/c++/v1/atomic
 	# Do the install.
-	DESTDIR=$(DESTDIR) ninja $(NINJA_FLAGS) -C build/libcxx install
-	touch build/libcxx.BUILT
+	DESTDIR=$(DESTDIR) ninja $(NINJA_FLAGS) -C build/libcxx-wasi install
+	touch build/libcxx-wasi.BUILT
 
 # Flags for libcxxabi.
 LIBCXXABI_CMAKE_FLAGS = \
-    -DCMAKE_C_COMPILER_WORKS=ON \
-    -DCMAKE_CXX_COMPILER_WORKS=ON \
     -DCMAKE_AR=$(BUILD_PREFIX)/bin/ar \
     -DCMAKE_MODULE_PATH=$(ROOT_DIR)/cmake \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
@@ -159,20 +160,18 @@ build/libcxxabi-wasi.BUILT: build/libcxx.BUILT build/llvm.BUILT
 	# Do the build.
 	mkdir -p build/libcxxabi-wasi
 	cd build/libcxxabi-wasi && cmake -G Ninja $(LIBCXXABI_CMAKE_FLAGS) \
-		-DWASI_SDK_PREFIX=$(PREFIX) \
+		-DWASI_SDK_PREFIX=$(BUILD_PREFIX) \
 		-DCMAKE_SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
-		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) \
-		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) \
+		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) -matomics" \
+		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) -matomics" \
 		-DLIBCXXABI_LIBDIR_SUFFIX=$(ESCAPE_SLASH)/wasm32-wasi \
-		-DCMAKE_TOOLCHAIN_FILE=$(PREFIX)/share/cmake/wasi-sdk.cmake \
+		-DCMAKE_TOOLCHAIN_FILE=$(BUILD_PREFIX)/share/cmake/wasi-sdk.cmake \
 		$(LLVM_PROJ_DIR)/libcxxabi
-	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
-	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
 	ninja $(NINJA_FLAGS) -C build/libcxxabi-wasi
 	# Do the install.
 	DESTDIR=$(DESTDIR) ninja $(NINJA_FLAGS) -C build/libcxxabi-wasi install
 	touch build/libcxxabi.BUILT
 
-build: build/llvm-wasi.BUILT build/libcxxabi-wasi.BUILT build/libcxx-wasi.BUILT
+build: build/libcxxabi-wasi.BUILT build/libcxx-wasi.BUILT build/llvm-wasi.BUILT 
 
 .PHONY: default clean build check
