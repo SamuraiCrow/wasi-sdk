@@ -45,8 +45,8 @@ default: build
 	@echo "Use -fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)"
 
 check:
-	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
-	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot" \
+	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls" \
+	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls" \
 	PATH="$(PATH_PREFIX)/bin:$$PATH" tests/run.sh
 
 clean:
@@ -92,7 +92,8 @@ build/llvm.BUILT:
 build/wasi-libc.BUILT: build/llvm.BUILT
 	$(MAKE) -C $(ROOT_DIR)/src/wasi-libc \
 		WASM_CC=$(BUILD_PREFIX)/bin/clang \
-		SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot
+		SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
+		THREAD_MODEL=posix
 	touch build/wasi-libc.BUILT
 
 build/compiler-rt.BUILT: build/llvm.BUILT build/wasi-libc.BUILT
@@ -134,10 +135,8 @@ LIBCXX_CMAKE_FLAGS = \
     -DCMAKE_STAGING_PREFIX=$(PREFIX)/share/wasi-sysroot \
     -DLLVM_CONFIG_PATH=$(ROOT_DIR)/build/llvm/bin/llvm-config \
     -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
-    -DLIBCXX_ENABLE_THREADS:BOOL=OFF \
-    -DLIBCXX_HAS_PTHREAD_API:BOOL=OFF \
-    -DLIBCXX_HAS_EXTERNAL_THREAD_API:BOOL=OFF \
-    -DLIBCXX_BUILD_EXTERNAL_THREAD_LIBRARY:BOOL=OFF \
+    -DLIBCXX_ENABLE_THREADS:BOOL=ON \
+    -DLIBCXX_HAS_PTHREAD_API:BOOL=ON \
     -DLIBCXX_HAS_WIN32_THREAD_API:BOOL=OFF \
     -DCMAKE_BUILD_TYPE=RelWithDebugInfo \
     -DLIBCXX_ENABLE_SHARED:BOOL=OFF \
@@ -175,10 +174,8 @@ LIBCXXABI_CMAKE_FLAGS = \
     -DLIBCXXABI_ENABLE_EXCEPTIONS:BOOL=OFF \
     -DLIBCXXABI_ENABLE_SHARED:BOOL=OFF \
     -DLIBCXXABI_SILENT_TERMINATE:BOOL=ON \
-    -DLIBCXXABI_ENABLE_THREADS:BOOL=OFF \
-    -DLIBCXXABI_HAS_PTHREAD_API:BOOL=OFF \
-    -DLIBCXXABI_HAS_EXTERNAL_THREAD_API:BOOL=OFF \
-    -DLIBCXXABI_BUILD_EXTERNAL_THREAD_LIBRARY:BOOL=OFF \
+    -DLIBCXXABI_ENABLE_THREADS:BOOL=ON \
+    -DLIBCXXABI_HAS_PTHREAD_API:BOOL=ON \
     -DLIBCXXABI_HAS_WIN32_THREAD_API:BOOL=OFF \
     -DLIBCXXABI_ENABLE_PIC:BOOL=OFF \
     -DCXX_SUPPORTS_CXX11=ON \
