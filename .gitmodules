@@ -1,9 +1,11 @@
 [submodule "src/llvm-project"]
 	path = src/llvm-project
 	url = https://github.com/llvm/llvm-project
+	branch = release/13.x
 [submodule "src/wasi-libc"]
 	path = src/wasi-libc
 	url = https://github.com/SamuraiCrow/wasi-libc.git
+	branch = posix
 [submodule "src/config"]
 	path = src/config
 	url = https://git.savannah.gnu.org/git/config.git

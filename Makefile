@@ -45,8 +45,8 @@ default: build
 	@echo "Use -fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)"
 
 check:
-	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls" \
-	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls" \
+	CC="clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls -ftls-model=local-exec" \
+	CXX="clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls -ftls-model=local-exec" \
 	PATH="$(PATH_PREFIX)/bin:$$PATH" tests/run.sh
 
 clean:
@@ -93,6 +93,7 @@ build/wasi-libc.BUILT: build/llvm.BUILT
 	$(MAKE) -C $(ROOT_DIR)/src/wasi-libc \
 		WASM_CC=$(BUILD_PREFIX)/bin/clang \
 		SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
+		WASM_CFLAGS="-U_REENTRANT -femulated-tls -ftls-model=local-exec -O2 -DNDEBUG" \
 		THREAD_MODEL=posix
 	touch build/wasi-libc.BUILT
 
