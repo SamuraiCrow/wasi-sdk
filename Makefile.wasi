@@ -42,8 +42,8 @@ VERSION:=$(shell $(BASH) ./version.sh)
 DEBUG_PREFIX_MAP=
 # -fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)
 WASI_SDK_PREFIX=$(BUILD_PREFIX)
-CC="$(PATH_PREFIX)/bin/clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot"
-CXX="$(PATH_PREFIX)/bin/clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot"
+CC="$(PATH_PREFIX)/bin/clang --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls -ftls-model=local-exec"
+CXX="$(PATH_PREFIX)/bin/clang++ --sysroot=$(BUILD_PREFIX)/share/wasi-sysroot -femulated-tls -ftls-model=local-exec"
 
 default: build
 	@echo "Use -fdebug-prefix-map=$(ROOT_DIR)=wasisdk://v$(VERSION)"

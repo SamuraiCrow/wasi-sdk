@@ -94,6 +94,7 @@ build/wasi-libc.BUILT: build/llvm.BUILT
 		WASM_CC=$(BUILD_PREFIX)/bin/clang \
 		SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
 		WASM_CFLAGS="-U_REENTRANT -femulated-tls -ftls-model=local-exec -O2 -DNDEBUG" \
+		OBJDIR=$(BUILD_PREFIX)/wasi-libc-obj/ \
 		THREAD_MODEL=posix
 	touch build/wasi-libc.BUILT
 
