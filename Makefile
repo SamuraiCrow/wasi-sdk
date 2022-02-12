@@ -90,11 +90,12 @@ build/llvm.BUILT:
 	touch build/llvm.BUILT
 
 build/wasi-libc.BUILT: build/llvm.BUILT
-	$(MAKE) -C $(ROOT_DIR)/src/wasi-libc \
+	mkdir -p build/wasi-libc-obj
+	$(MAKE) -j -C $(ROOT_DIR)/src/wasi-libc \
 		WASM_CC=$(BUILD_PREFIX)/bin/clang \
 		SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
 		WASM_CFLAGS="-U_REENTRANT -femulated-tls -ftls-model=local-exec -O2 -DNDEBUG" \
-		OBJDIR=$(BUILD_PREFIX)/wasi-libc-obj/ \
+		OBJDIR=$(ROOT_DIR)/build/wasi-libc-obj \
 		THREAD_MODEL=posix
 	touch build/wasi-libc.BUILT
 
@@ -157,8 +158,8 @@ build/libcxx.BUILT: build/llvm.BUILT build/compiler-rt.BUILT build/wasi-libc.BUI
 	mkdir -p build/libcxx
 	cd build/libcxx && cmake -G Ninja $(LIBCXX_CMAKE_FLAGS) \
 		-DCMAKE_SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
-		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) \
-		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) \
+		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP)" \
+		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP)" \
 		-DLIBCXX_LIBDIR_SUFFIX=$(ESCAPE_SLASH)/wasm32-wasi \
 		$(LLVM_PROJ_DIR)/libcxx
 	ninja $(NINJA_FLAGS) -C build/libcxx
@@ -197,8 +198,8 @@ build/libcxxabi.BUILT: build/libcxx.BUILT build/llvm.BUILT
 	mkdir -p build/libcxxabi
 	cd build/libcxxabi && cmake -G Ninja $(LIBCXXABI_CMAKE_FLAGS) \
 		-DCMAKE_SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
-		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP) \
-		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP) \
+		-DCMAKE_C_FLAGS="$(DEBUG_PREFIX_MAP)" \
+		-DCMAKE_CXX_FLAGS="$(DEBUG_PREFIX_MAP)" \
 		-DLIBCXXABI_LIBDIR_SUFFIX=$(ESCAPE_SLASH)/wasm32-wasi \
 		$(LLVM_PROJ_DIR)/libcxxabi
 	ninja $(NINJA_FLAGS) -C build/libcxxabi
